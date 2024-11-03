@@ -1,6 +1,6 @@
-import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -8,6 +8,10 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.gradleBuildConfig)
+    alias(libs.plugins.androidxRoom)
+    alias(libs.plugins.skie)
+    alias(libs.plugins.kotlinxSerialization)
 }
 
 kotlin {
@@ -28,7 +32,11 @@ kotlin {
             isStatic = true
         }
     }
-    
+
+    sourceSets.commonMain {
+        kotlin.srcDir("build/generated/ksp/metadata")
+    }
+
     sourceSets {
         
         androidMain.dependencies {
@@ -40,7 +48,7 @@ kotlin {
         commonMain.dependencies {
             implementation(compose.runtime)
             implementation(compose.foundation)
-            implementation(compose.material)
+            implementation(compose.material3)
             implementation(compose.ui)
             implementation(compose.components.resources)
             implementation(compose.components.uiToolingPreview)
@@ -59,6 +67,11 @@ kotlin {
             implementation(libs.koin.compose)
             implementation(libs.koin.compose.viewmodel)
             implementation(libs.moko.permissions.compose)
+            implementation(libs.androidx.room.runtime)
+            implementation(libs.androidx.sqlite.bundled)
+        }
+        iosMain.dependencies {
+            implementation(libs.ktor.client.darwin)
         }
     }
 }
@@ -66,6 +79,10 @@ kotlin {
 android {
     namespace = "com.github.movies"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
+
+    sourceSets["main"].manifest.srcFile("src/androidMain/AndroidManifest.xml")
+    sourceSets["main"].res.srcDirs("src/androidMain/res")
+    sourceSets["main"].resources.srcDirs("src/commonMain/resources")
 
     defaultConfig {
         applicationId = "com.github.movies"
@@ -88,9 +105,42 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+    buildFeatures {
+        compose = true
+    }
+    dependencies {
+        debugImplementation(compose.uiTooling)
+//        implementation(libs.androidx.room.compiler)
+        add("kspCommonMainMetadata", libs.androidx.room.compiler)
+    }
 }
 
 dependencies {
-    debugImplementation(compose.uiTooling)
+//    add("kspCommonMainMetadata", libs.androidx.room.compiler)
+}
+
+room {
+    schemaDirectory("$projectDir/schemas")
+}
+
+tasks.withType<org.jetbrains.kotlin.gradle.dsl.KotlinCompile<*>>().configureEach {
+    if (name != "kspCommonMainKotlinMetadata") {
+        dependsOn("kspCommonMainKotlinMetadata")
+    }
+}
+buildConfig {
+    packageName("com.github.movies")
+
+    val properties = Properties()
+    properties.load(project.rootProject.file("local.properties").reader())
+    val apiKey = properties.getProperty("API_KEY")
+
+    buildConfigField("API_KEY", apiKey)
+}
+
+skie {
+    features {
+        enableSwiftUIObservingPreview = true
+    }
 }
 

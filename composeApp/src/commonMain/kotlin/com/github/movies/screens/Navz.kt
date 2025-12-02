@@ -6,38 +6,40 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.navigation.toRoute
 import com.github.movies.screens.detail.DetailScreen
 import com.github.movies.screens.home.HomeScreen
+import kotlinx.serialization.Serializable
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
 @Composable
-fun Navz(){
+fun Navz() {
     val navController = rememberNavController()
     NavHost(
         navController = navController,
-        startDestination = Routes.Home.path
-    ){
+        startDestination = HomeRoute
+    ) {
 
-        composable(Routes.Home.path) {
+        composable<HomeRoute> {
             HomeScreen(
-                onMovieClick = { navController.navigate("detail/${it.id}") },
+                onMovieClick = { movie ->
+                    navController.navigate(DetailRoute(movie.id))
+                }
             )
         }
-
-        composable(
-            route = Routes.Detail.path,
-            arguments = listOf(navArgument("movieId") { type = NavType.IntType })
-        ) { backStackEntry ->
-            val movieId = checkNotNull(backStackEntry.arguments?.getInt("movieId"))
+        composable<DetailRoute> { backStackEntry ->
+            val args = backStackEntry.toRoute<DetailRoute>()
             DetailScreen(
-                vm = koinViewModel(parameters = { parametersOf(movieId) }),
-                onBack = { navController.popBackStack() })
+                vm = koinViewModel(parameters = { parametersOf(args.movieId) }),
+                onBack = { navController.popBackStack() }
+            )
         }
     }
 }
 
-sealed class Routes(open val path: String){
-    object Home : Routes("home")
-    object Detail : Routes("detail/{movieId}")
-}
+@Serializable
+data class DetailRoute(val movieId: Int)
+
+@Serializable
+object HomeRoute

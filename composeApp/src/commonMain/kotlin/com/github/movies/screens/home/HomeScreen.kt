@@ -101,7 +101,7 @@ fun MovieItem(movie: Movie, onClick: () -> Unit) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(2 / 3f)
-                    .clip(MaterialTheme.shapes.small)
+                    .clip(MaterialTheme.shapes.medium)
             )
             if (movie.isFavorite) {
                 Icon(
